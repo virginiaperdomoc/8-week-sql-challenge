@@ -1,4 +1,8 @@
 -- CASE STUDY QUESTIONS --
+SELECT * FROM menu;
+SELECT * FROM sales;
+SELECT * FROM members;
+
 
 -- 1. What is the total amount each customer spent at the restaurant?
 SELECT customer_id, SUM(price) AS amount_spent 
@@ -32,7 +36,7 @@ ORDER BY times_purchased DESC
 LIMIT 1;
 
 -- 5. Which item was the most popular for each customer?
-WITH most_popular AS (SELECT customer_id, product_name, 
+WITH most_popular AS (SELECT customer_id, product_name, COUNT(product_name),
 DENSE_RANK() OVER (PARTITION BY customer_id ORDER BY COUNT(product_name) DESC) AS ranking
 FROM sales s
 JOIN menu m ON s.product_id=m.product_id
@@ -58,7 +62,7 @@ WHERE first_order=1;
 
 -- 7. Which item was purchased just before the customer became a member?
 WITH before_membership AS (SELECT s.customer_id, join_date, order_date, product_name,
-DENSE_RANK() OVER (PARTITION BY b.customer_id ORDER BY order_date DESC) AS before_membership
+DENSE_RANK() OVER (PARTITION BY b.customer_id ORDER BY order_date DESC) AS before_membership -- the reason why we order by descending date is because the latest date before becoming a member
 FROM sales s
 JOIN menu a ON s.product_id=a.product_id
 JOIN members b ON s.customer_id=b.customer_id
