@@ -1,7 +1,7 @@
 
 # Case Study #1 - Danny's Diner 
 
-![Danny's Diner](Week01.png)
+![Danny's Diner](staticAsset/images/CaseStudy01/Week01.png)
 
 
 ## Entity Relationship Diagram (ERD)
