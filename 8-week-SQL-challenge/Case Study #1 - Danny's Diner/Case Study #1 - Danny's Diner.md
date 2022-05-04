@@ -1,7 +1,7 @@
 
 # Case Study #1 - Danny's Diner 
 
-![Danny's Diner](C:\Users\virgi\Desktop\Projects\Danny Ma's 8 Week of SQL challenge\assets\images\CaseStudy01\Week01.png)
+![Danny's Diner](.images/Week01.png)
 
 
 ## Entity Relationship Diagram (ERD)
