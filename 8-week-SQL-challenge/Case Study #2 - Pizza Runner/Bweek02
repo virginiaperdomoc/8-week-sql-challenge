@@ -15,20 +15,16 @@ ELSE 0
 END) week_03
 FROM runners;
 
---SELECT EXTRACT('week' FROM registration_date)
---FROM runners;
-
---SELECT DATE_PART('week', registration_date)
---FROM runners;
-
-
-SELECT * FROM runners;
 
 -- What was the average time in minutes it took for each runner to arrive at the Pizza Runner HQ to pickup the order?
-SELECT ROUND(AVG(EXTRACT(EPOCH FROM pickup_time-order_time) / 60),2) avg_pickup_time
+SELECT runner_id, ROUND(AVG(EXTRACT(EPOCH FROM ((pickup_time - order_time)/60)))) avg_pickup_time
 FROM customer_orders c
 JOIN runner_orders r ON c.order_id=r.order_id
-WHERE pickup_time IS NOT NULL;
+WHERE pickup_time IS NOT NULL
+GROUP BY runner_id
+ORDER BY runner_id;
+
+
 
 -- Is there any relationship between the number of pizzas and how long the order takes to prepare?
 WITH prep_time AS (SELECT DISTINCT r.order_id, COUNT(r.order_id) OVER (PARTITION BY r.order_id) pizzas_per_order,
@@ -44,6 +40,9 @@ ROUND(SUM(order_prep_time) OVER (PARTITION BY pizzas_per_order)/COUNT(pizzas_per
 FROM prep_time
 ORDER BY pizzas_per_order DESC;
 
+-- Not surprisingly, the more pizzas are in an order, the longer it takes to prepare.
+
+
 -- What was the average distance travelled for each customer?
 SELECT DISTINCT customer_id , ROUND(AVG(distance),2) avg_distance
 FROM runner_orders r
@@ -52,19 +51,21 @@ WHERE pickup_time IS NOT NULL
 GROUP BY customer_id
 ORDER BY customer_id;
 
+
 -- What was the difference between the longest and shortest delivery times for all orders?
 SELECT MAX(duration)-MIN(duration) diff FROM runner_orders;
 
+
 -- What was the average speed for each runner for each delivery and do you notice any trend for these values?
-SELECT runner_id, COUNT(order_id) orders_per_runner, ROUND(AVG(duration),2) avg_duration,ROUND(AVG(distance),2) avg_distance,
-ROUND(SUM(distance)/SUM(duration),2) avg_speed
+SELECT runner_id, 
+ROUND(distance*60/duration,1) avg_km_per_h
 FROM runner_orders
 WHERE pickup_time IS NOT NULL
-GROUP BY runner_id
 ORDER BY runner_id;
 
+
 -- What is the successful delivery percentage for each runner?
-WITH success_rate AS (SELECT runner_id, 
+WITH success_rate AS (SELECT DISTINCT runner_id, 
 SUM(CASE
 	WHEN cancellation='' THEN 1
 	ELSE 0
@@ -72,7 +73,7 @@ SUM(CASE
 ) OVER (PARTITION BY runner_id) successful_orders,
 COUNT(*) OVER (PARTITION BY runner_id) total_orders
 FROM runner_orders
-ORDER BY runner_id)
 
+ORDER BY runner_id)
 SELECT runner_id, successful_orders*100/total_orders success_rate
 FROM success_rate;
