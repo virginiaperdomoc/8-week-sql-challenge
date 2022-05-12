@@ -47,7 +47,24 @@ GROUP BY pizza_name;
 
 -- 3. The Pizza Runner team now wants to add an additional ratings system that allows customers to rate their runner, how would you design an additional table for this new dataset 
 -- - generate a schema for this new table and insert your own data for ratings for each successful customer order between 1 to 5.
+DROP TABLE IF EXISTS ratings;
+CREATE TABLE ratings (
+"runner_id" INTEGER,
+"order_id" INTEGER NOT NULL UNIQUE,
+"rating" INTEGER CHECK (rating BETWEEN 1 AND 5)
+);
 
+INSERT INTO ratings
+  ("runner_id", "order_id", "rating")
+VALUES
+  (1, 1, 2),
+  (1, 2, 3),
+  (1, 3, 4),
+  (2, 4, 1),
+  (3, 5, 4),
+  (2, 7, 3),
+  (2, 8, 4),
+  (1, 10, 5);
 
 -- 4. Using your newly generated table - can you join all of the information together to form a table which has the following information for successful deliveries?
 -- ● customer_id
@@ -60,6 +77,26 @@ GROUP BY pizza_name;
 -- ● delivery duration
 -- ● average speed
 -- ● total number of pizzas
+SELECT co.customer_id, co.order_id, ro.runner_id, r.rating, co.order_time, ro.pickup_time, ro.pickup_time-co.order_time AS diff, 
+ro.duration AS duration_mins, ROUND(ro.distance/ro.duration,2)*60 AS avg_speed_km_h, COUNT(*) AS total_pizzas
+FROM customer_orders co
+JOIN runner_orders ro ON co.order_id=ro.order_id
+JOIN ratings r ON ro.order_id=r.order_id
+GROUP BY co.customer_id, co.order_id, ro.runner_id, r.rating, co.order_time, ro.pickup_time, ro.duration, ROUND(ro.distance/ro.duration,2)
+ORDER BY co.order_id;
+
 
 -- 6. If a Meat Lovers pizza was $12 and Vegetarian $10 fixed prices with no cost for extras and each runner is paid $0.30 per kilometre traveled - 
 -- how much money does Pizza Runner have left over after these deliveries?
+WITH sales_cost AS (
+SELECT SUM(CASE
+WHEN co.pizza_id=1 THEN 12
+WHEN co.pizza_id=2 THEN 10
+END) sale_total,
+SUM(ro.distance*.3) trip_rate
+FROM customer_orders co
+JOIN runner_orders ro ON co.order_id=ro.order_id
+WHERE ro.distance IS NOT NULL)
+
+SELECT *, sale_total-trip_rate AS net_total
+FROM sales_cost;
