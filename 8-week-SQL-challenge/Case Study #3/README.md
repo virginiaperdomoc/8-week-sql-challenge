@@ -1,12 +1,12 @@
 
-# Case Study #2 - Pizza Runner 
+# Case Study #3 - Foodie-Fi
 
-![Pizza Runner](images/Week02.png)
+![Foodie-Fi](images/Week03.png)
 
 
 ## Entity Relationship Diagram (ERD)
 
-![Week 02 ERD](images/Week02_ERD.png)
+![Week 03 ERD](images/Week03_ERD.png)
 
 
 ## Schema
