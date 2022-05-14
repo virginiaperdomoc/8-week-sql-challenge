@@ -6,9 +6,16 @@ SELECT *
 FROM subscriptions
 WHERE customer_id IN (1, 2, 11, 13, 15, 16, 18, 19);
 
-SELECT * FROM sample_cust s
-JOIN plans p ON s.plan_id=p.plan_id;
+SELECT customer_id, start_date, plan_name, price
+FROM sample_cust s
+JOIN plans p ON s.plan_id=p.plan_id
+ORDER BY customer_id;
 
-
-SELECT * FROM plans;
-SELECT * FROM subscriptions;
+-- Customer 1 decided to keep but downgrade to a basic plan after the trial. They've been suscribed for at least 7 months.
+-- Customer 2 upgraded to pro annual after the trial. Their billing date is 2021-09-20.
+-- Customer 11 discontinued using the service after the trial.
+-- Customer 13 first downgraded their plan to basic monthly and then upgraded it to pro monthly after 3 months.
+-- Customer 15 automatically continued to the pro monthly plan and decided to churn after the first month.
+-- Customer 16 first downgraded their plan to basic monthly during four months and then decided to upgrade it to pro annual. Their next billing date is 2021-10-21.
+-- Customer 18 automatically continued to a pro monthly plan.
+-- Customer 19 upgraded to a pro annual plan after two months as a pro monthly plan. Their next billing date is 2021-08-29.
