@@ -1,0 +1,150 @@
+-- B. Data Analysis Questions
+-- 1.	How many customers has Foodie-Fi ever had?
+DROP VIEW cust;
+CREATE VIEW cust AS
+SELECT customer_id, COUNT(DISTINCT customer_id) cust
+FROM subscriptions s
+JOIN plans p ON s.plan_id=p.plan_id
+GROUP BY customer_id
+HAVING SUM(price) > 0.00;
+
+SELECT COUNT(cust) total_customers
+FROM cust;
+-- This only takes into account customers that didn't churn after the trial and have made at least one payment.
+
+SELECT COUNT(DISTINCT customer_id) all_cust
+FROM subscriptions;
+-- This takes into account all customers, even if they churned after trial
+
+-- 2.	What is the monthly distribution of trial plan start_date values for our dataset - use the start of the month as the group by value
+WITH yr_mnth AS (
+	SELECT TO_CHAR(start_date, 'YYYY-MM') yr_mnth
+	FROM subscriptions s
+	WHERE plan_id=0)
+
+SELECT yr_mnth, COUNT(yr_mnth) trials_per_month
+FROM yr_mnth
+GROUP BY yr_mnth
+ORDER BY yr_mnth;
+
+-- 3.	What plan start_date values occur after the year 2020 for our dataset? Show the breakdown by count of events for each plan_name
+SELECT plan_name, COUNT(s.plan_id) event_count
+FROM subscriptions s
+JOIN plans p ON s.plan_id=p.plan_id
+WHERE EXTRACT (YEAR FROM start_date) > 2020
+GROUP BY plan_name, s.plan_id
+ORDER BY s.plan_id;
+
+-- 4.	What is the customer count and percentage of customers who have churned rounded to 1 decimal place?
+WITH churn AS (
+SELECT s.customer_id, 
+SUM(CASE 
+WHEN plan_id=4 THEN 1
+ELSE 0
+END) churn,
+COUNT(s.customer_id) OVER () total_customer_count
+FROM subscriptions s
+JOIN cust c ON s.customer_id=c.customer_id
+GROUP BY s.customer_id
+ORDER BY s.customer_id)
+
+SELECT total_customer_count, SUM(churn) churned_customers,
+ROUND(SUM(churn)*100/total_customer_count, 1) churn_pct
+FROM churn
+GROUP BY total_customer_count;
+-- This is if we only consider as customers those who have made some sort of payment.
+
+WITH all_cust AS (
+	SELECT customer_id, 
+	SUM(CASE 
+	WHEN plan_id=4 THEN 1
+	ELSE 0
+	END) churn,
+	COUNT(customer_id) OVER () total_customer_count
+	FROM subscriptions 
+	GROUP BY customer_id
+	ORDER BY customer_id)
+	
+SELECT total_customer_count, SUM(churn) churned_customers,
+ROUND(SUM(churn)*100/total_customer_count, 1) churn_pct
+FROM all_cust
+GROUP BY total_customer_count;
+-- This is if we consider all customers, regardeless of whether they have made a payment or not.
+
+
+
+-- 5.	How many customers have churned straight after their initial free trial - what percentage is this rounded to the nearest whole number?
+WITH trial_churn AS (
+	SELECT customer_id, COUNT(DISTINCT customer_id) cust
+	FROM subscriptions s
+	JOIN plans p ON s.plan_id=p.plan_id
+	GROUP BY customer_id
+	HAVING SUM(price) = 0.00
+	ORDER BY customer_id)
+
+SELECT COUNT(DISTINCT s.customer_id), SUM(cust) churned_after_trial, ROUND(SUM(cust)*100/COUNT(DISTINCT s.customer_id)) churned_after_trial_perc
+FROM subscriptions s
+LEFT JOIN trial_churn t ON s.customer_id=t.customer_id;
+
+
+-- 6.	What is the number and percentage of customer plans after their initial free trial?
+WITH trial_plan AS (
+	SELECT DISTINCT customer_id,
+	CASE
+	WHEN SUM(price) > 0.00 THEN 1
+	ELSE 0
+	END plan_after_trial
+	FROM subscriptions s
+	JOIN plans p ON s.plan_id=p.plan_id
+	GROUP BY customer_id
+	ORDER BY customer_id)
+
+SELECT SUM(plan_after_trial) cust_w_plans, SUM(plan_after_trial)*100/COUNT(customer_id) plan_perc
+FROM trial_plan;
+
+--
+-- Using cust view
+WITH trial_plan AS (
+	SELECT DISTINCT s.customer_id, cust
+	FROM subscriptions s
+	LEFT JOIN cust c ON s.customer_id=c.customer_id
+	ORDER BY s.customer_id)
+
+SELECT SUM(cust) cust_w_plans, ROUND(SUM(cust)*100/COUNT(customer_id),2) plan_perc
+FROM trial_plan;
+
+
+-- 7.	What is the customer count and percentage breakdown of all 5 plan_name values at 2020-12-31?
+WITH last_record AS (
+	SELECT customer_id, MAX(start_date) last_date
+	FROM subscriptions s
+	WHERE start_date <= '2020-12-31'
+	GROUP BY customer_id
+	ORDER BY MAX(start_date)),
+	
+last_active_plan AS (
+	SELECT plan_id, COUNT(plan_id) cnt_2020
+	FROM last_record l
+	LEFT JOIN subscriptions s ON s.customer_id=l.customer_id
+	WHERE start_date=last_date
+	GROUP BY plan_id
+	ORDER BY plan_id)
+
+SELECT plan_name, cnt_2020, ROUND(cnt_2020*100/SUM(cnt_2020) OVER (), 2) perc_2020
+FROM last_active_plan l
+JOIN plans p ON l.plan_id=p.plan_id;
+
+
+-- 8.	How many customers have upgraded to an annual plan in 2020?
+SELECT COUNT(*) annual_plan_2020
+FROM subscriptions s
+WHERE start_date <= '2020-12-31'
+AND plan_id=3;
+
+
+-- 9.	How many days on average does it take for a customer to an annual plan from the day they join Foodie-Fi?
+
+
+-- 10.	Can you further breakdown this average value into 30 day periods (i.e. 0-30 days, 31-60 days etc)
+
+-- 11.	How many customers downgraded from a pro monthly to a basic monthly plan in 2020?
