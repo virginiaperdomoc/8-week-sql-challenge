@@ -103,7 +103,7 @@ SELECT SUM(plan_after_trial) cust_w_plans, SUM(plan_after_trial)*100/COUNT(custo
 FROM trial_plan;
 
 --
--- Using cust view
+-- Using cust view created in question 1
 WITH trial_plan AS (
 	SELECT DISTINCT s.customer_id, cust
 	FROM subscriptions s
@@ -143,8 +143,43 @@ AND plan_id=3;
 
 
 -- 9.	How many days on average does it take for a customer to an annual plan from the day they join Foodie-Fi?
+CREATE VIEW annual_plan AS
+SELECT customer_id, plan_id, start_date annual_start_date
+FROM subscriptions
+WHERE plan_id=3;
+
+CREATE VIEW start_date AS
+SELECT customer_id, plan_id, start_date
+FROM subscriptions
+WHERE plan_id=0;
+
+SELECT ROUND(AVG(annual_start_date-start_date)) diff
+FROM start_date s
+JOIN annual_plan a ON s.customer_id=a.customer_id;
 
 
 -- 10.	Can you further breakdown this average value into 30 day periods (i.e. 0-30 days, 31-60 days etc)
+WITH diff AS (
+SELECT annual_start_date-start_date diff
+FROM start_date s
+JOIN annual_plan a ON s.customer_id=a.customer_id),
+
+start_day AS (
+SELECT generate_series(1, (SELECT MAX(diff) FROM diff),
+					 30) start_day),
+
+intervals AS (
+SELECT start_day, start_day+29 end_day
+FROM start_day)
+
+SELECT start_day, end_day,
+(SELECT COUNT(*) FROM diff WHERE diff BETWEEN start_day AND end_day)
+FROM intervals;
+
+-- this script creates the 30-days date intervals, but I won't use it for this solution. Keeping it for posterity.
+-- SELECT intervals::date start_date, LEAD(intervals::date) OVER ()-1 end_date
+-- FROM generate_series((SELECT MIN(start_date) FROM start_date), 
+--					 (SELECT MAX(annual_start_date) FROM annual_plan),
+--					 '30 days') intervals;
 
 -- 11.	How many customers downgraded from a pro monthly to a basic monthly plan in 2020?
