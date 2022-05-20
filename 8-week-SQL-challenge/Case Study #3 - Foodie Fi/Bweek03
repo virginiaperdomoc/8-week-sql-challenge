@@ -176,6 +176,7 @@ SELECT start_day, end_day,
 (SELECT COUNT(*) FROM diff WHERE diff BETWEEN start_day AND end_day)
 FROM intervals;
 
+-- script reference: https://www.gab.lc/articles/group_by_range_of_values/
 -- this script creates the 30-days date intervals, but I won't use it for this solution. Keeping it for posterity.
 -- SELECT intervals::date start_date, LEAD(intervals::date) OVER ()-1 end_date
 -- FROM generate_series((SELECT MIN(start_date) FROM start_date), 
@@ -183,3 +184,28 @@ FROM intervals;
 --					 '30 days') intervals;
 
 -- 11.	How many customers downgraded from a pro monthly to a basic monthly plan in 2020?
+WITH pro_monthly AS (
+SELECT customer_id, plan_id, start_date pro_monthly
+FROM subscriptions
+WHERE EXTRACT (YEAR FROM start_date) = 2020
+AND plan_id=2),
+
+basic_monthly AS (
+SELECT customer_id, plan_id, start_date basic_monthly
+FROM subscriptions
+WHERE EXTRACT (YEAR FROM start_date) = 2020
+AND plan_id=1),
+
+downgrade AS (
+SELECT CASE WHEN EXTRACT(DAY FROM pro_monthly::timestamp-basic_monthly::timestamp)<0 THEN 'Yes' ELSE 'No' END downgrade
+FROM pro_monthly p
+LEFT JOIN basic_monthly b ON p.customer_id=b.customer_id
+WHERE basic_monthly IS NOT NULL)
+
+SELECT downgrade, COUNT(downgrade)
+FROM downgrade
+GROUP BY downgrade;
+
+-- As we can see, there are no instances when a plan was downgraded from pro monthly to basic monthly in 2020
+-- Can I solve this implementing a self-join?
+
