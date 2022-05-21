@@ -5,3 +5,44 @@
 -- ● upgrades from basic to monthly or pro plans are reduced by the current paid amount in that month and start immediately
 -- ● upgrades from pro monthly to pro annual are paid at the end of the current billing period and also starts at the end of the month period
 -- ● once a customer churns they will no longer make payments
+
+-- ** Not quite there yet. Missing a few things. See end of the script **
+
+-- we will be using the script to create 30-days date interval that we had saved from the previous case study questions
+-- reference script: https://stackoverflow.com/questions/70278421/postgres-sql-query-to-explode-all-the-dates-between-start-and-end-date-for-each
+WITH monthly_cust AS (
+SELECT customer_id, s.plan_id, plan_name, intervals::date payment_date, price amount, ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY intervals::date) payment_order
+FROM subscriptions s
+JOIN plans p ON s.plan_id=p.plan_id
+JOIN LATERAL generate_series(s.start_date, 
+					 '2020-12-31'::date,
+					 '1 month') intervals ON TRUE
+WHERE s.plan_id NOT IN (0, 3)
+ORDER BY customer_id, intervals::date, ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY intervals::date)),
+
+churn AS (
+SELECT customer_id churn_cust, start_date churn_date
+FROM subscriptions
+WHERE plan_id=4)
+
+SELECT * 
+FROM monthly_cust m
+LEFT JOIN churn c ON m.customer_id=c.churn_cust
+--WHERE churn_date IS NULL;
+
+
+WITH yearly_cust AS (
+SELECT customer_id, s.plan_id, plan_name, start_date payment_date, price amount, ROW_NUMBER() OVER (PARTITION BY customer_id) payment_order
+FROM subscriptions s
+JOIN plans p ON s.plan_id=p.plan_id
+WHERE s.plan_id = 3
+AND EXTRACT(YEAR FROM start_date)='2020'
+ORDER BY customer_id, start_date)
+
+SELECT *
+FROM yearly_cust;
+
+-- Problems:
+-- a. How to stop generate_series based on condition? In this case, churn_date
+-- b. Add rows for customers with a yearly plan
+-- Things to explore: EXCEPT, EXISTS, JOIN LATERAL https://stackoverflow.com/questions/47820811/issue-with-generate-series-in-case-sentence

@@ -1,0 +1,39 @@
+-- D. Outside The Box Questions
+-- The following are open ended questions which might be asked during a technical interview for this case study - there are no right or wrong answers, 
+-- but answers that make sense from both a technical and a business perspective make an amazing impression!
+
+-- 1. How would you calculate the rate of growth for Foodie-Fi?
+-- With the data that we have, by using the compounded monthly growth rate (CMGR), which measures monthly growth on an investment over a certain periot of time.
+-- The formula is (sum of latest month's payment/sum of first month's payment)*(1/ number of months) - 1
+
+-- 2. What key metrics would you recommend Foodie-Fi management to track over time to assess performance of their overall business?
+-- ● Conversion rate
+-- ● Customer acquisition cost
+-- ● Customer lifetime value
+-- ● Customer retention rate
+-- ● New and paying customer to churning customers ratio
+-- ● Total watch time and amount of videos watched
+-- ● Gross profit margin
+-- ● EBITDA
+-- ● Number of subscribers
+
+-- 3. What are some key customer journeys or experiences that you would analyse further to improve customer retention?
+-- ● Make signing up to the platform simple and painless
+-- ● Offer something to retain the customer when they ask to cancel the plan (like an upgrade for X months or extend the plan for X motnhs for free, in case they have an annual plan)
+-- ● Provide content for all age groups
+-- ● Provide new content often
+-- ● Make the search engine intuitive and meaningful so it's easier to discover new content, work on the categories
+-- ● Perform extensive research on the user interface's usability and UX/UI design to eliminate any barriers and improve user experience
+-- ● Refine the suggestions' algorithm
+
+-- 4. If the Foodie-Fi team were to create an exit survey shown to customers who wish to cancel their subscription, what questions would you include in the survey?
+-- ● Why have you decided to cancel your subscription?
+-- ● What did you like about Foodie-Fi?
+-- ● How could we improve?
+-- ● How likely are you to return?
+-- ● Will you still be interested to know about our new products/services in the future?
+-- ● Anything else you would like to share?
+
+-- 5. What business levers could the Foodie-Fi team use to reduce the customer churn rate? How would you validate the effectiveness of your ideas?
+
+
