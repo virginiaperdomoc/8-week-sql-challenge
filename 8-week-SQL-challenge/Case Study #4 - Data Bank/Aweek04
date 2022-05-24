@@ -1,0 +1,56 @@
+-- A. Customer Nodes Exploration
+
+-- 1. How many unique nodes are there on the Data Bank system?
+SELECT COUNT(DISTINCT node_id) unique_nodes
+FROM customer_nodes;
+
+-- 2. What is the number of nodes per region?
+SELECT region_id, COUNT(DISTINCT node_id) unique_nodes
+FROM customer_nodes
+GROUP BY region_id;
+
+-- 3. How many customers are allocated to each region?
+SELECT region_id, COUNT(DISTINCT customer_id) unique_cust
+FROM customer_nodes
+GROUP BY region_id;
+
+-- 4. How many days on average are customers reallocated to a different node?
+SELECT ROUND(AVG(end_date-start_date)) avg_days_to_rellocation
+FROM customer_nodes;
+-- According to the calculation, it takes 416,373 days in average to rellocate to a different node. That does not make any sense to us, 
+-- so we want to check if there are any errors in the dates.
+
+SELECT customer_id, end_date, start_date, end_date-start_date diff
+FROM customer_nodes
+GROUP BY customer_id, end_date, start_date
+ORDER BY customer_id, end_date DESC;
+-- As suspected, there is an error in the data: some end dates are corrupted and have '9999-12-31' as a value. This need to be corrected before moving forward. 
+-- In order to calculate the end dates, we will use the average of days to rellocation for each customer and add it to the last start date.
+
+WITH diff AS (
+	SELECT customer_id, ROUND(AVG(end_date-start_date)) diff
+	FROM customer_nodes
+	WHERE end_date!='9999-12-31'
+	GROUP BY customer_id
+	ORDER BY customer_id),
+
+new_end_date AS (
+SELECT c.customer_id, c.start_date+d.diff::int new_end_date
+	FROM customer_nodes c
+	JOIN diff d ON c.customer_id=d.customer_id
+	WHERE c.end_date='9999-12-31'
+	ORDER BY customer_id)
+
+UPDATE customer_nodes
+SET end_date=new_end_date
+FROM new_end_date
+WHERE customer_nodes.customer_id=new_end_date.customer_id
+AND end_date='9999-12-31';
+
+-- Now we can calculate how many days on average are customers reallocated to a different node
+SELECT ROUND(AVG(end_date-start_date)) avg_days_to_rellocation
+FROM customer_nodes;
+
+
+
+-- 5. What is the median, 80th and 95th percentile for this same reallocation days metric for each region?
