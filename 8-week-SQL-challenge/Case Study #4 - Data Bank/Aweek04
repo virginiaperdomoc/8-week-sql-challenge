@@ -40,7 +40,8 @@ SELECT c.customer_id, c.start_date+d.diff::int new_end_date
 	JOIN diff d ON c.customer_id=d.customer_id
 	WHERE c.end_date='9999-12-31'
 	ORDER BY customer_id)
-
+	
+ -- we update the customer_nodes table with the new end_dates
 UPDATE customer_nodes
 SET end_date=new_end_date
 FROM new_end_date
@@ -51,6 +52,15 @@ AND end_date='9999-12-31';
 SELECT ROUND(AVG(end_date-start_date)) avg_days_to_rellocation
 FROM customer_nodes;
 
-
-
 -- 5. What is the median, 80th and 95th percentile for this same reallocation days metric for each region?
+WITH diff AS (
+	SELECT region_id, end_date-start_date diff
+	FROM customer_nodes
+	ORDER BY region_id)
+	
+SELECT region_id,
+PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY diff.diff) median,
+PERCENTILE_DISC(0.8) WITHIN GROUP (ORDER BY diff.diff) percentile_80,
+PERCENTILE_DISC(0.95) WITHIN GROUP (ORDER BY diff.diff) percentile_95
+FROM diff
+GROUP BY region_id;

@@ -1,0 +1,90 @@
+-- B. Customer Transactions
+-- 1. What is the unique count and total amount for each transaction type?
+SELECT txn_type, COUNT(txn_type) txn_count, SUM(txn_amount) total_amount
+FROM customer_transactions
+GROUP BY txn_type;
+
+-- 2. What is the average total historical deposit counts and amounts for all customers?
+SELECT 
+SUM(CASE WHEN txn_type='deposit' THEN 1 ELSE 0 END)/COUNT(DISTINCT customer_id) avg_cnt_deposits,
+ROUND(AVG(txn_amount),2) avg_deposits
+FROM customer_transactions
+WHERE txn_type='deposit';
+
+-- 3. For each month - how many Data Bank customers make more than 1 deposit and either 1 purchase or 1 withdrawal in a single month?
+WITH cnt_table AS (
+SELECT customer_id, EXTRACT(MONTH FROM txn_date) mnth, SUM(CASE WHEN txn_type='deposit' THEN 1 ELSE 0 END) cnt_deposits, 
+SUM(CASE WHEN txn_type='purchase' THEN 1 ELSE 0 END) cnt_purchases, SUM(CASE WHEN txn_type='withdrawal' THEN 1 ELSE 0 END) cnt_withdrawals
+FROM customer_transactions
+GROUP BY customer_id, EXTRACT(MONTH FROM txn_date))
+
+SELECT mnth, COUNT(customer_id) cnt_cust
+FROM cnt_table
+WHERE cnt_deposits>1
+AND cnt_purchases=1 OR cnt_withdrawals=1
+GROUP BY mnth
+ORDER BY mnth;
+
+-- 4. What is the closing balance for each customer at the end of the month?
+CREATE VIEW balance AS 
+SELECT EXTRACT(MONTH FROM txn_date) mnth, customer_id, 
+	(CASE
+		WHEN (SUM(txn_amount) FILTER (WHERE txn_type IN ('deposit','purchase')) OVER (PARTITION BY EXTRACT(MONTH FROM txn_date), customer_id)) IS NULL THEN 0 
+		ELSE (SUM(txn_amount) FILTER (WHERE txn_type IN ('deposit','purchase')) OVER (PARTITION BY EXTRACT(MONTH FROM txn_date), customer_id)) 
+	END)
+-
+	(CASE
+		WHEN (SUM(txn_amount) FILTER (WHERE txn_type='withdrawal') OVER (PARTITION BY EXTRACT(MONTH FROM txn_date), customer_id)) IS NULL THEN 0 
+		ELSE (SUM(txn_amount) FILTER (WHERE txn_type='withdrawal') OVER (PARTITION BY EXTRACT(MONTH FROM txn_date), customer_id)) 
+	END) closing_balance
+FROM customer_transactions;
+	
+SELECT *
+FROM balance
+GROUP BY mnth, customer_id, closing_balance
+ORDER BY mnth, customer_id;
+-- we tried to have a single query, but window functions aren't allowed in GROUP BY. 
+-- Because we will be using the balance table for the next question, we will create a view.
+
+
+-- 5. What is the percentage of customers who increase their closing balance by more than 5%?
+-- The closing balance is the positive or negative amount remaining in an account at the end of an accounting period. 
+-- In this case, the closing balance is at the end of every month.
+-- We will calculate the percentage of customers that increased their closing balance by more than 5% in comparison to the closing balance of the previous month, at least once.
+
+WITH monthly_balance AS (
+SELECT DISTINCT t.customer_id, EXTRACT(MONTH FROM txn_date) mnth, 
+	(CASE
+		WHEN (SUM(txn_amount) FILTER (WHERE txn_type IN ('deposit','purchase')) OVER (PARTITION BY t.customer_id ORDER BY EXTRACT(MONTH FROM txn_date))) IS NULL THEN 0 
+		ELSE (SUM(txn_amount) FILTER (WHERE txn_type IN ('deposit','purchase')) OVER (PARTITION BY t.customer_id ORDER BY EXTRACT(MONTH FROM txn_date))) 
+	END) 
+	-
+	(CASE
+		WHEN (SUM(txn_amount) FILTER (WHERE txn_type='withdrawal') OVER (PARTITION BY t.customer_id)) IS NULL THEN 0 
+		ELSE (SUM(txn_amount) FILTER (WHERE txn_type='withdrawal') OVER (PARTITION BY t.customer_id)) 
+	END) monthly_balance
+FROM customer_transactions t
+GROUP BY t.customer_id, EXTRACT(MONTH FROM txn_date), txn_amount, txn_type
+ORDER BY t.customer_id, EXTRACT(MONTH FROM txn_date)),
+
+previous_balance AS (
+	SELECT customer_id, mnth, monthly_balance, 
+	CASE 
+		WHEN LAG(monthly_balance) OVER (PARTITION BY customer_id) IS NULL THEN 0
+		ELSE LAG(monthly_balance) OVER (PARTITION BY customer_id)
+	END previous_mnth
+	FROM monthly_balance),
+	
+pct_increase AS (
+	SELECT *, 
+	CASE previous_mnth
+		WHEN 0 THEN 0
+		ELSE (monthly_balance*100/previous_mnth)-100 
+	END monthly_pct_increase
+	FROM previous_balance)
+	
+SELECT (SELECT COUNT(DISTINCT customer_id)
+		FROM pct_increase
+		WHERE monthly_pct_increase>5)*100/
+(COUNT (DISTINCT customer_id)) pct
+FROM customer_transactions
