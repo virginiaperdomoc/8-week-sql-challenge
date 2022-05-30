@@ -1,0 +1,77 @@
+-- C. Data Allocation Challenge
+-- To test out a few different hypotheses - the Data Bank team wants to run an experiment where different groups of customers would be allocated data using 3 different options:
+-- Option 1: data is allocated based off the amount of money at the end of the previous month
+-- Option 2: data is allocated on the average amount of money kept in the account in the previous 30 days
+-- Option 3: data is updated real-time
+
+-- For this multi-part challenge question - you have been requested to generate the following data elements to help the Data Bank team estimate how much data
+-- will need to be provisioned for each option:
+-- a. running customer balance column that includes the impact of each transaction
+-- b. customer balance at the end of each month
+-- c. minimum, average and maximum values of the running balance for each customer
+--Using all of the data available - how much data would have been required for each option on a monthly basis?
+
+-- In order to solve this part of the project, we need to understand how is data storage calculated. According to the case study introduction, 
+-- "customers are allocated cloud data storage limits which are directly linked to how much money they have in their accounts." 
+
+-- We're now going to answer each part of the challenge.
+-- a. running customer balance column that includes the impact of each transaction
+-- This is not too clear for me, I do not understand what is meant with "that includes the **impact** of each transaction". Therefore, I will only create a running total column.
+CREATE VIEW running_balance AS
+WITH amounts AS (
+	SELECT customer_id, txn_date, txn_type, 
+	CASE
+		WHEN txn_type IN ('deposit', 'purchase') THEN txn_amount
+		ELSE -txn_amount
+	END amounts
+	FROM customer_transactions
+	GROUP BY customer_id, txn_date, txn_type, txn_amount
+	ORDER BY customer_id, txn_date),
+	
+running_balance AS (
+	SELECT customer_id, txn_date, txn_type, amounts txn_amount,
+	SUM(amounts) OVER (PARTITION BY customer_id ORDER BY txn_date) running_balance
+	FROM amounts)
+
+SELECT *
+FROM running_balance;
+
+-- b. customer balance at the end of each month
+CREATE VIEW monthly_balance AS
+WITH amounts AS (
+	SELECT customer_id, EXTRACT(MONTH FROM txn_date) mnth, 
+	CASE
+		WHEN txn_type IN ('deposit', 'purchase') THEN txn_amount
+		ELSE -txn_amount
+	END amounts
+	FROM customer_transactions
+	GROUP BY customer_id, EXTRACT(MONTH FROM txn_date), txn_type, txn_amount
+	ORDER BY customer_id, EXTRACT(MONTH FROM txn_date)),
+	
+monthly_balance AS (
+	SELECT DISTINCT customer_id, mnth, 
+	SUM(amounts) OVER (PARTITION BY customer_id ORDER BY mnth) monthly_balance
+	FROM amounts
+	GROUP BY customer_id, mnth, amounts
+	ORDER BY customer_id, mnth)
+
+SELECT * FROM monthly_balance;
+
+-- c. minimum, average and maximum values of the running balance for each customer
+CREATE VIEW min_max_balance AS 
+SELECT customer_id, txn_date, txn_type, txn_amount, running_balance,
+MIN(running_balance) OVER (PARTITION BY customer_id) min_balance,
+ROUND(AVG(running_balance) OVER (PARTITION BY customer_id),2) avg_balance,
+MAX(running_balance) OVER (PARTITION BY customer_id) max_balance
+FROM running_balance;
+
+SELECT * FROM min_max_balance;
+
+--Using all of the data available - how much data would have been required for each option on a monthly basis?
+
+SELECT EXTRACT(MONTH FROM txn_date) mnth, 
+SUM(min_balance) sum_min_balance, SUM(txn_amount) sum_monthly_balance, SUM(max_balance) sum_max_balance
+FROM min_max_balance
+GROUP BY EXTRACT(MONTH FROM txn_date)
+ORDER BY EXTRACT(MONTH FROM txn_date);
+
