@@ -68,8 +68,13 @@ FROM running_balance;
 SELECT * FROM min_max_balance;
 
 --Using all of the data available - how much data would have been required for each option on a monthly basis?
-
-SELECT EXTRACT(MONTH FROM txn_date) mnth, 
+SELECT 
+CASE EXTRACT(MONTH FROM txn_date)
+WHEN 1 THEN 'January'
+WHEN 2 THEN 'February'
+WHEN 3 THEN 'March'
+ELSE 'April'
+END mnth,
 SUM(min_balance) sum_min_balance, SUM(txn_amount) sum_monthly_balance, SUM(max_balance) sum_max_balance
 FROM min_max_balance
 GROUP BY EXTRACT(MONTH FROM txn_date)
